@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 #if NET46
 using System.Security;
 #endif
@@ -102,17 +103,19 @@ namespace System.Net
 
         internal void IncrementConnectionCount()
         {
-            connectionCount++;
+            Interlocked.Increment(ref connectionCount);
         }
+
         internal void IncrementIdleConnection()
         {
-            idleConnections++;
+            Interlocked.Increment(ref idleConnections);
         }
+
         internal void DecrementIdleConnection(int count=1)
         {
-            idleConnections-=count;
+            Interlocked.Exchange(ref idleConnections, idleConnections - count);
         }
- 
+
         protected override void OnEventCommand(EventCommandEventArgs command)
         {
             if (command.Command == EventCommand.Enable)
