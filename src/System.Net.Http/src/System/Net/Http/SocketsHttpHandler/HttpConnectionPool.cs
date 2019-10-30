@@ -261,6 +261,11 @@ namespace System.Net.Http
                         // Test it below outside the lock, to avoid doing expensive validation while holding the lock.
                         cachedConnection = list[list.Count - 1];
                         list.RemoveAt(list.Count - 1);
+
+                        if (NetEventSource.IsEnabled)
+                        {
+                            NetEventSource.Log.DecrementIdleConnection();
+                        }
                     }
                     else
                     {
@@ -741,7 +746,11 @@ namespace System.Net.Http
         {
             Debug.Assert(Monitor.IsEntered(SyncObj), $"Expected to be holding {nameof(SyncObj)}");
 
-            if (NetEventSource.IsEnabled) Trace(null);
+            if (NetEventSource.IsEnabled)
+            {
+                Trace(null);
+                NetEventSource.Log.IncrementConnectionCount();
+            }
             _usedSinceLastCleanup = true;
 
             Debug.Assert(
@@ -850,7 +859,11 @@ namespace System.Net.Http
                     {
                         // Pool the connection by adding it to the list.
                         list.Add(new CachedConnection(connection));
-                        if (NetEventSource.IsEnabled) connection.Trace("Stored connection in pool.");
+                        if (NetEventSource.IsEnabled)
+                        {
+                            connection.Trace("Stored connection in pool.");
+                            NetEventSource.Log.IncrementIdleConnection();
+                        }
                         return;
                     }
                 }
@@ -891,7 +904,11 @@ namespace System.Net.Http
             {
                 if (!_disposed)
                 {
-                    if (NetEventSource.IsEnabled) Trace("Disposing pool.");
+                    if (NetEventSource.IsEnabled)
+                    {
+                        Trace("Disposing pool.");
+                        NetEventSource.Log.DecrementIdleConnection(list.Count);
+                    }
                     _disposed = true;
                     list.ForEach(c => c._connection.Dispose());
                     list.Clear();
@@ -1045,6 +1062,7 @@ namespace System.Net.Http
                 0,                           // request ID
                 memberName,                  // method name
                 message);                    // message
+        internal int GetIdleConnectionsCount() => _idleConnections.Count;
 
         /// <summary>A cached idle connection and metadata about it.</summary>
         [StructLayout(LayoutKind.Auto)]

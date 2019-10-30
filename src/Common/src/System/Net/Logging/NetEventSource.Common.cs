@@ -93,6 +93,37 @@ namespace System.Net
         private const int NextAvailableEventId = 17; // Update this value whenever new events are added.  Derived types should base all events off of this to avoid conflicts.
         #endregion
 
+        #region Counters
+        private PollingCounter? activeConnectionCount;
+        private PollingCounter? idleConnectionCount;
+
+        private int connectionCount;
+        private int idleConnections;
+
+        internal void IncrementConnectionCount()
+        {
+            connectionCount++;
+        }
+        internal void IncrementIdleConnection()
+        {
+            idleConnections++;
+        }
+        internal void DecrementIdleConnection(int count=1)
+        {
+            idleConnections-=count;
+        }
+ 
+        protected override void OnEventCommand(EventCommandEventArgs command)
+        {
+            if (command.Command == EventCommand.Enable)
+            {
+                activeConnectionCount = new PollingCounter("active-connections-count", this, () => connectionCount - idleConnections);
+                idleConnectionCount = new PollingCounter("idle-connections-count", this, () => idleConnections);
+            }
+        }
+
+        #endregion
+
         #region Events
         #region Enter
         /// <summary>Logs entrance to a method.</summary>
